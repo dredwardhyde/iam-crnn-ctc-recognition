@@ -23,8 +23,7 @@ dataset = IAMData(txt_file='./dataset/lines.txt',
                   random_rotation=2,
                   random_stretch=1.2)
 
-model = IAMModel(channels=3,
-                 time_step=96,
+model = IAMModel(time_step=96,
                  feature_size=512,
                  hidden_size=512,
                  output_size=len(dataset.char_dict) + 1,

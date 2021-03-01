@@ -4,8 +4,6 @@ from torch import nn
 from torch.utils.model_zoo import load_url
 from torchvision.models.resnet import BasicBlock
 
-resnet_url = 'https://download.pytorch.org/models/resnet34-333f7ec4.pth'
-
 
 def downsample(channels, chan_out, stride, pad=0):
     return nn.Sequential(
@@ -17,14 +15,10 @@ def downsample(channels, chan_out, stride, pad=0):
 
 class CNN(nn.Module):
 
-    def __init__(self, channels, time_step):
+    def __init__(self, time_step):
         super(CNN, self).__init__()
 
-        self.channels = channels
-        if channels == 3:
-            self.conv1 = nn.Conv2d(channels, 64, kernel_size=7, stride=2, padding=2, bias=False)
-        else:
-            self.chan1_conv = nn.Conv2d(channels, 64, kernel_size=7, stride=2, padding=2, bias=False)
+        self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=2, bias=False)
         self.relu = nn.ReLU(inplace=True)
         self.bn1 = nn.BatchNorm2d(64)
         self.maxpool = nn.MaxPool2d(kernel_size=3, stride=2, padding=1)
@@ -42,10 +36,7 @@ class CNN(nn.Module):
                 nn.init.constant_(m.bias, 0)
 
     def forward(self, xb):
-        if self.chan_in == 3:
-            out = self.maxpool(self.bn1(self.relu(self.conv1(xb))))
-        else:
-            out = self.maxpool(self.bn1(self.relu(self.chan1_conv(xb))))
+        out = self.maxpool(self.bn1(self.relu(self.conv1(xb))))
         out = self.layer1(out)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -70,11 +61,11 @@ class RNN(nn.Module):
 
 class IAMModel(nn.Module):
 
-    def __init__(self, channels, time_step, feature_size,
+    def __init__(self, time_step, feature_size,
                  hidden_size, output_size, num_rnn_layers,
                  rnn_dropout=0):
         super(IAMModel, self).__init__()
-        self.cnn = CNN(channels=channels, time_step=time_step)
+        self.cnn = CNN(time_step=time_step)
         self.rnn = RNN(feature_size=feature_size, hidden_size=hidden_size,
                        output_size=output_size, num_layers=num_rnn_layers,
                        dropout=rnn_dropout)
@@ -103,7 +94,7 @@ class IAMModel(nn.Module):
         self.to_freeze = []
         self.frozen = []
         model_dict = self.state_dict()
-        pretrained_dict = load_url(resnet_url)
+        pretrained_dict = load_url('https://download.pytorch.org/models/resnet34-333f7ec4.pth')
         pretrained_dict = {f'cnn.{k}': v for k, v in pretrained_dict.items() if f'cnn.{k}' in model_dict}
         model_dict.update(pretrained_dict)
         self.load_state_dict(pretrained_dict, strict=False)
