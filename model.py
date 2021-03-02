@@ -1,3 +1,5 @@
+from itertools import groupby
+
 import numpy as np
 import torch
 from torch import nn
@@ -93,10 +95,10 @@ class IAMModel(nn.Module):
             out = self.forward(xb)
             softmax_out = out.softmax(2).argmax(2).permute(1, 0).cpu().numpy()
             char_list = []
-            for i in range(0, softmax_out.shape[0]):
-                dup_rm = softmax_out[i, :][np.insert(np.diff(softmax_out[i, :]).astype(np.bool), 0, True)]
-                dup_rm = dup_rm[dup_rm != 0]
-                char_list.append(dup_rm.astype(int))
+            for i in range(softmax_out.shape[0]):
+                raw_prediction = softmax_out[i, :]
+                prediction = [c for c, _ in groupby(raw_prediction) if c != 0]
+                char_list.append(np.array(prediction, dtype=int))
         return char_list
 
     def load_pretrained_resnet(self):
