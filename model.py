@@ -62,11 +62,11 @@ class RNN(nn.Module):
         super(RNN, self).__init__()
         self.lstm = nn.LSTM(input_size=feature_size, hidden_size=hidden_size, num_layers=num_layers,
                             bidirectional=True, batch_first=True, dropout=dropout)
-        self.atrous_conv = nn.Conv2d(hidden_size * 2, output_size, kernel_size=1, dilation=1)
+        self.last_conv2d = nn.Conv2d(hidden_size * 2, output_size, kernel_size=1)
 
     def forward(self, xb):
         out, _ = self.lstm(xb)
-        out = self.atrous_conv(out.permute(0, 2, 1).unsqueeze(3))
+        out = self.last_conv2d(out.permute(0, 2, 1).unsqueeze(3))
         return out.squeeze(3).permute((2, 0, 1))
 
 
