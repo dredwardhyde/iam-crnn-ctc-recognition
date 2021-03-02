@@ -44,8 +44,7 @@ model = IAMModel(time_step=96,
                  feature_size=512,
                  hidden_size=512,
                  output_size=len(dataset.char_dict) + 1,
-                 num_rnn_layers=4,
-                 rnn_dropout=0)
+                 num_rnn_layers=4)
 model.load_pretrained_resnet()
 model.to(dev)
 

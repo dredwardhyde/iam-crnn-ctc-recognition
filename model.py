@@ -58,10 +58,10 @@ class CNN(nn.Module):
 
 class RNN(nn.Module):
 
-    def __init__(self, feature_size, hidden_size, output_size, num_layers, dropout=0):
+    def __init__(self, feature_size, hidden_size, output_size, num_layers):
         super(RNN, self).__init__()
         self.lstm = nn.LSTM(input_size=feature_size, hidden_size=hidden_size, num_layers=num_layers,
-                            bidirectional=True, batch_first=True, dropout=dropout)
+                            bidirectional=True, batch_first=True, dropout=0)
         self.last_conv2d = nn.Conv2d(hidden_size * 2, output_size, kernel_size=1)
 
     def forward(self, xb):
@@ -73,13 +73,11 @@ class RNN(nn.Module):
 class IAMModel(nn.Module):
 
     def __init__(self, time_step, feature_size,
-                 hidden_size, output_size, num_rnn_layers,
-                 rnn_dropout=0):
+                 hidden_size, output_size, num_rnn_layers):
         super(IAMModel, self).__init__()
         self.cnn = CNN(time_step=time_step)
         self.rnn = RNN(feature_size=feature_size, hidden_size=hidden_size,
-                       output_size=output_size, num_layers=num_rnn_layers,
-                       dropout=rnn_dropout)
+                       output_size=output_size, num_layers=num_rnn_layers)
         self.time_step = time_step
 
     def forward(self, xb):
