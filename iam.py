@@ -81,7 +81,7 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
             if batch_n > (len_train - 5):
                 model.eval()
                 with torch.no_grad():
-                    decoded = model.best_path_decode(xb)
+                    decoded = model.eager_decode(xb)
                     for j in range(0, len(decoded)):
                         pred_word = decoded[j]
                         actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
@@ -100,7 +100,7 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
                                      file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET)):
                 input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
                 valid_loss += loss_func(model(xb), yb, input_lengths, lens)
-                decoded = model.best_path_decode(xb)
+                decoded = model.eager_decode(xb)
                 for j in range(0, len(decoded)):
                     pred_word = decoded[j]
                     actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
@@ -138,7 +138,7 @@ def batch_predict(model, valid_dl, up_to):
     xb, yb, lens = iter(valid_dl).next()
     model.eval()
     with torch.no_grad():
-        outs = model.best_path_decode(xb)
+        outs = model.eager_decode(xb)
         for i in range(len(outs)):
             start = sum(lens[:i])
             end = lens[i].item()

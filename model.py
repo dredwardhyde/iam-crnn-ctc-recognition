@@ -90,7 +90,7 @@ class IAMModel(nn.Module):
         out = self.rnn(out)
         return out.log_softmax(2)
 
-    def best_path_decode(self, xb):
+    def eager_decode(self, xb):
         with torch.no_grad():
             # This tensor for each image in the batch contains probabilities of each label for each input feature
             out = self.forward(xb)
