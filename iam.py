@@ -1,18 +1,19 @@
 import sys
 
 import Levenshtein as leven
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
+from colorama import Fore
 from skimage.color import rgb2grey
 from skimage.transform import rotate
 from torch import nn, optim
 from torch.utils.data import SubsetRandomSampler, DataLoader
-import matplotlib as mpl
+from tqdm import tqdm
+
 from dataset import IAMData
 from model import IAMModel
-from colorama import Fore
-from tqdm import tqdm
 
 dev = "cuda" if torch.cuda.is_available() else "cpu"
 
@@ -96,8 +97,8 @@ def fit(model, epochs, train_dl, valid_dl, lr=1e-3, wd=1e-2, betas=(0.9, 0.999))
             leven_dist = 0
             target_lengths = 0
             for xb, yb, lens in tqdm(valid_dl,
-                             position=0, leave=True,
-                             file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET)):
+                                     position=0, leave=True,
+                                     file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET)):
                 input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
                 valid_loss += loss_func(model(xb).log_softmax(2), yb, input_lengths, lens)
                 decoded = model.best_path_decode(xb)
@@ -131,7 +132,7 @@ valid_sampler = SubsetRandomSampler(val_indices)
 
 train_loader = DataLoader(dataset, batch_size=batch_size[0], sampler=train_sampler, collate_fn=collate_fn)
 validation_loader = DataLoader(dataset, batch_size=batch_size[1], sampler=valid_sampler, collate_fn=collate_fn)
-fit(model=model, epochs=10, train_dl=train_loader, valid_dl=validation_loader)
+fit(model=model, epochs=12, train_dl=train_loader, valid_dl=validation_loader)
 
 
 def batch_predict(model, valid_dl, up_to):

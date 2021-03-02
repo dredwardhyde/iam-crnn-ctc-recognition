@@ -1,8 +1,9 @@
-import pandas as pd
+import os
+
 import numpy as np
+import pandas as pd
 import torch
 from skimage import io, transform, color
-import os
 from torch.utils.data import Dataset
 from torchvision.transforms import Normalize
 
@@ -11,53 +12,84 @@ class IAMData(Dataset):
 
     def __init__(self, txt_file, root_dir, output_size, border_pad=(0, 0), random_rotation=0, random_stretch=1):
         gt = []
+        # Open raw lines.txt
         for line in open(txt_file):
+            # Ignore comments
             if not line.startswith("#"):
+                # Split each string by whitespaces
                 info = line.strip().split()
+                # If string was recognized correctly
                 if info[1] == 'ok':
-                    gt.append((info[0] + '.png', info[1], ' '.join(info[8:]).replace('|', ' ')))
+                    # First column is filename, second column is target sentence
+                    gt.append((info[0] + '.png', ' '.join(info[8:]).replace('|', ' ')))
 
-        df = pd.DataFrame(gt, columns=['file', 'ok', 'word'])
+        # Convert target array to Dataframe
+        df = pd.DataFrame(gt, columns=['file', 'word'])
         self.line_df = df
+        # Compute char set
         chars = []
+        # Take all values from the last column, convert to chars and add them to array
         self.line_df.iloc[:, -1].apply(lambda x: chars.extend(list(x)))
+        # Remove duplicates
         chars = sorted(list(set(chars)))
+        # Convert to dictionary like {1:'c'}
         self.char_dict = {c: i for i, c in enumerate(chars, 1)}
-        self.max_len = self.line_df.iloc[:, -1].apply(lambda x: len(x)).max()
+        # Convert raw data to dataset
         self.samples = {}
         for idx in range(0, len(self.line_df)):
+            # Take image filename from the first column
             img_name = self.line_df.iloc[idx, 0]
+            # Split filename by dash to get the full path
             im_nm_split = img_name.split('-')
+            # Get the first level folder
             start_folder = im_nm_split[0]
+            # Get the second level folder
             src_folder = '-'.join(im_nm_split[:2])
+            # Target folder is ready
             folder_name = os.path.join(start_folder, src_folder)
+            # Calculate the full path to the image
             img_filepath = os.path.join(root_dir,
                                         folder_name,
                                         img_name)
+            # Read target image
             image = io.imread(img_filepath)
+            # Read target sentence
             word = self.line_df.iloc[idx, -1]
+            # Calculate resulting size like target_size - borders
             resize = (output_size[0] - border_pad[0], output_size[1] - border_pad[1])
+            # Get height and width of the image
             h, w = image.shape[:2]
+            # Calculate width and height scaling to the target size
             fx = w / resize[1]
             fy = h / resize[0]
+            # Get the maximum scale
             f = max(fx, fy)
+            # Calculate new size like either maximum target dimension or scaled one min(resize[0], int(h / f)
+            # max(min(resize[0], int(h / f)), 1) etc. sets the lower bound
             new_size = (max(min(resize[0], int(h / f)), 1), max(min(resize[1], int(w / f * random_stretch)), 1))
+            # Resize image and fill all empty area with white color
             image = transform.resize(image, new_size, preserve_range=True, mode='constant', cval=255)
+            # Generate random angle from -2 to 2
             rot = np.random.choice(np.arange(-random_rotation, random_rotation), 1)
+            # Rotate image and fill all empty area with white color
             image = transform.rotate(image, rot, mode='constant', cval=255, preserve_range=True)
-
+            # Prepare canvas for the resized image
             canvas = np.ones(output_size, dtype=np.uint8) * 255
-
+            # Calculate maximum actual padding
             v_pad_max = output_size[0] - new_size[0]
             h_pad_max = output_size[1] - new_size[1]
+            # Generate new padding to place image somewhere between 0 and pad_max
             v_pad = int(np.random.choice(np.arange(0, v_pad_max + 1), 1))
             h_pad = int(np.random.choice(np.arange(0, h_pad_max + 1), 1))
-
+            # Place image
             canvas[v_pad:v_pad + new_size[0], h_pad:h_pad + new_size[1]] = image
+            # Rotate image 90 degrees counter-clockwise
             canvas = transform.rotate(canvas, -90, resize=True)[:, :-1]
+            # Convert to RGB from greyscale
             canvas = color.grey2rgb(canvas)
+            # Transpose tensor
             canvas = torch.from_numpy(canvas.transpose((2, 0, 1))).float()
-
+            # Normalize image
             norm = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             sample = {'image': norm(canvas), 'word': word}
             self.samples[idx] = sample
