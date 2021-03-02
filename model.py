@@ -88,15 +88,20 @@ class IAMModel(nn.Module):
         xb = xb.float()
         out = self.cnn(xb)
         out = self.rnn(out)
-        return out
+        return out.log_softmax(2)
 
     def best_path_decode(self, xb):
         with torch.no_grad():
+            # This tensor for each image in the batch contains probabilities of each label for each input feature
             out = self.forward(xb)
-            softmax_out = out.softmax(2).argmax(2).permute(1, 0).cpu().numpy()
+            # Take label with maximum probability for each input feature
+            softmax_out = out.argmax(2).permute(1, 0).cpu().numpy()
             char_list = []
             for i in range(softmax_out.shape[0]):
+                # Raw prediction like [10, 5, 10, 10,  3, 10, 10,  8, 10, 10,  3, 10, 10, 10, 0, 0, 10]
+                # With blank label 0
                 raw_prediction = softmax_out[i, :]
+                # Remove all the blank values and group repeating values together
                 prediction = [c for c, _ in groupby(raw_prediction) if c != 0]
                 char_list.append(np.array(prediction, dtype=int))
         return char_list

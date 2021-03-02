@@ -51,11 +51,11 @@ def collate_fn(batch):
     return images.to(dev), targets.to(dev), lengths.to(dev)
 
 
-def fit(model, epochs, train_dl, valid_dl, lr=1e-3, wd=1e-2, betas=(0.9, 0.999)):
+def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, betas=(0.9, 0.999)):
     best_leven = 1000
     opt = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr,
                      weight_decay=wd, betas=betas)
-    len_train = len(train_dl)
+    len_train = len(train_data_loader)
     loss_func = nn.CTCLoss(reduction='sum', zero_infinity=True)
     for i in range(1, epochs + 1):
         batch_n = 1
@@ -63,13 +63,12 @@ def fit(model, epochs, train_dl, valid_dl, lr=1e-3, wd=1e-2, betas=(0.9, 0.999))
         loss = 0
         train_leven = 0
         len_leven = 0
-        for xb, yb, lens in tqdm(train_dl,
+        for xb, yb, lens in tqdm(train_data_loader,
                                  position=0, leave=True,
                                  file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)):
             model.train()
             opt.zero_grad()
-            out = model(xb)
-            log_probs = out.log_softmax(2).requires_grad_()
+            log_probs = model(xb)
             input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
             loss = loss_func(log_probs, yb, input_lengths, lens)
 
@@ -96,11 +95,11 @@ def fit(model, epochs, train_dl, valid_dl, lr=1e-3, wd=1e-2, betas=(0.9, 0.999))
             valid_loss = 0
             leven_dist = 0
             target_lengths = 0
-            for xb, yb, lens in tqdm(valid_dl,
+            for xb, yb, lens in tqdm(valid_data_loader,
                                      position=0, leave=True,
                                      file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET)):
                 input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
-                valid_loss += loss_func(model(xb).log_softmax(2), yb, input_lengths, lens)
+                valid_loss += loss_func(model(xb), yb, input_lengths, lens)
                 decoded = model.best_path_decode(xb)
                 for j in range(0, len(decoded)):
                     pred_word = decoded[j]
@@ -109,7 +108,7 @@ def fit(model, epochs, train_dl, valid_dl, lr=1e-3, wd=1e-2, betas=(0.9, 0.999))
                 target_lengths += sum(lens).item()
 
         print('epoch {}: train loss {} | valid loss {} | \nTRAIN LEVEN {} | VAL LEVEN {}'
-              .format(i, train_loss / len(train_dl), valid_loss / len(valid_dl), train_leven / len_leven,
+              .format(i, train_loss / len(train_data_loader), valid_loss / len(valid_data_loader), train_leven / len_leven,
                       leven_dist / target_lengths), end='\n')
 
         if (leven_dist / target_lengths) < best_leven:
@@ -132,7 +131,7 @@ valid_sampler = SubsetRandomSampler(val_indices)
 
 train_loader = DataLoader(dataset, batch_size=batch_size[0], sampler=train_sampler, collate_fn=collate_fn)
 validation_loader = DataLoader(dataset, batch_size=batch_size[1], sampler=valid_sampler, collate_fn=collate_fn)
-fit(model=model, epochs=12, train_dl=train_loader, valid_dl=validation_loader)
+fit(model=model, epochs=12, train_data_loader=train_loader, valid_data_loader=validation_loader)
 
 
 def batch_predict(model, valid_dl, up_to):
