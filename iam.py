@@ -83,9 +83,8 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
                 with torch.no_grad():
                     decoded = model.eager_decode(xb)
                     for j in range(0, len(decoded)):
-                        pred_word = decoded[j]
                         actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
-                        train_leven += leven.distance(''.join(pred_word.astype(str)), ''.join(actual.astype(str)))
+                        train_leven += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
                     len_leven += sum(lens).item()
 
             batch_n += 1
@@ -102,9 +101,8 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
                 valid_loss += loss_func(model(xb), yb, input_lengths, lens)
                 decoded = model.eager_decode(xb)
                 for j in range(0, len(decoded)):
-                    pred_word = decoded[j]
                     actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
-                    leven_dist += leven.distance(''.join(pred_word.astype(str)), ''.join(actual.astype(str)))
+                    leven_dist += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
                 target_lengths += sum(lens).item()
 
         print('epoch {}: train loss {} | valid loss {} | \nTRAIN LEVEN {} | VAL LEVEN {}'
