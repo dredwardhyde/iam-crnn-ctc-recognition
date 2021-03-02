@@ -81,8 +81,6 @@ class IAMModel(nn.Module):
                        output_size=output_size, num_layers=num_rnn_layers,
                        dropout=rnn_dropout)
         self.time_step = time_step
-        self.to_freeze = []
-        self.frozen = []
 
     def forward(self, xb):
         xb = xb.float()
@@ -107,17 +105,8 @@ class IAMModel(nn.Module):
         return char_list
 
     def load_pretrained_resnet(self):
-        self.to_freeze = []
-        self.frozen = []
         model_dict = self.state_dict()
         pretrained_dict = load_url('https://download.pytorch.org/models/resnet34-333f7ec4.pth')
         pretrained_dict = {f'cnn.{k}': v for k, v in pretrained_dict.items() if f'cnn.{k}' in model_dict}
         model_dict.update(pretrained_dict)
         self.load_state_dict(pretrained_dict, strict=False)
-        for k in self.state_dict().keys():
-            if not 'running' in k and not 'track' in k:
-                self.frozen.append(False)
-                if k in pretrained_dict.keys():
-                    self.to_freeze.append(True)
-                else:
-                    self.to_freeze.append(False)

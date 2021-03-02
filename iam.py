@@ -48,11 +48,6 @@ model = IAMModel(time_step=96,
                  rnn_dropout=0)
 model.load_pretrained_resnet()
 model.to(dev)
-# Unfreeze ResNet34 layers
-for p in model.parameters():
-    p.requires_grad = True
-    model.frozen = [False for i in range(0, len(model.frozen))]
-
 
 # ================================================ TRAINING MODEL ======================================================
 def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, betas=(0.9, 0.999)):
