@@ -17,6 +17,7 @@ from model import IAMModel
 
 dev = "cuda" if torch.cuda.is_available() else "cpu"
 
+# ============================================= PREPARING DATASET ======================================================
 dataset = IAMData(txt_file='./dataset/lines.txt',
                   root_dir='./dataset',
                   output_size=(64, 800),
@@ -24,21 +25,8 @@ dataset = IAMData(txt_file='./dataset/lines.txt',
                   random_rotation=2,
                   random_stretch=1.2)
 
-model = IAMModel(time_step=96,
-                 feature_size=512,
-                 hidden_size=512,
-                 output_size=len(dataset.char_dict) + 1,
-                 num_rnn_layers=4,
-                 rnn_dropout=0)
-model.load_pretrained_resnet()
-model.to(dev)
 
-for p in model.parameters():
-    p.requires_grad = True
-    model.frozen = [False for i in range(0, len(model.frozen))]
-
-
-def collate_fn(batch):
+def collate(batch):
     images, words = [b.get('image') for b in batch], [b.get('word') for b in batch]
     images = torch.stack(images, 0)
     lengths = [len(word) for word in words]
@@ -51,6 +39,22 @@ def collate_fn(batch):
     return images.to(dev), targets.to(dev), lengths.to(dev)
 
 
+# ================================================= MODEL ==============================================================
+model = IAMModel(time_step=96,
+                 feature_size=512,
+                 hidden_size=512,
+                 output_size=len(dataset.char_dict) + 1,
+                 num_rnn_layers=4,
+                 rnn_dropout=0)
+model.load_pretrained_resnet()
+model.to(dev)
+# Unfreeze ResNet34 layers
+for p in model.parameters():
+    p.requires_grad = True
+    model.frozen = [False for i in range(0, len(model.frozen))]
+
+
+# ================================================ TRAINING MODEL ======================================================
 def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, betas=(0.9, 0.999)):
     best_leven = 1000
     opt = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr,
@@ -58,41 +62,37 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
     len_train = len(train_data_loader)
     loss_func = nn.CTCLoss(reduction='sum', zero_infinity=True)
     for i in range(1, epochs + 1):
+        # ============================================ TRAINING ========================================================
         batch_n = 1
-        train_loss = 0
         loss = 0
-        train_leven = 0
-        len_leven = 0
+        train_levenshtein = 0
+        len_levenshtein = 0
         for xb, yb, lens in tqdm(train_data_loader,
                                  position=0, leave=True,
                                  file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)):
             model.train()
             opt.zero_grad()
-            log_probs = model(xb)
             input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
-            loss = loss_func(log_probs, yb, input_lengths, lens)
-
-            with torch.no_grad():
-                train_loss += loss
-
+            loss = loss_func(model(xb), yb, input_lengths, lens)
             loss.backward()
             opt.step()
-
+            # ================================== TRAINING LEVENSHTEIN DISTANCE =========================================
             if batch_n > (len_train - 5):
                 model.eval()
                 with torch.no_grad():
                     decoded = model.eager_decode(xb)
                     for j in range(0, len(decoded)):
                         actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
-                        train_leven += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
-                    len_leven += sum(lens).item()
+                        train_levenshtein += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
+                    len_levenshtein += sum(lens).item()
 
             batch_n += 1
 
+        # ============================================ VALIDATION ======================================================
         model.eval()
         with torch.no_grad():
             valid_loss = 0
-            leven_dist = 0
+            val_levenshtein = 0
             target_lengths = 0
             for xb, yb, lens in tqdm(valid_data_loader,
                                      position=0, leave=True,
@@ -102,20 +102,19 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
                 decoded = model.eager_decode(xb)
                 for j in range(0, len(decoded)):
                     actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
-                    leven_dist += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
+                    val_levenshtein += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
                 target_lengths += sum(lens).item()
 
-        print('epoch {}: train loss {} | valid loss {} | \nTRAIN LEVEN {} | VAL LEVEN {}'
-              .format(i, train_loss / len(train_data_loader), valid_loss / len(valid_data_loader), train_leven / len_leven,
-                      leven_dist / target_lengths), end='\n')
-
-        if (leven_dist / target_lengths) < best_leven:
-            torch.save(model.state_dict(),
-                       f=str((leven_dist / target_lengths) * 100).replace('.', '_') + '_' + 'model.pth')
-            best_leven = leven_dist / target_lengths
+        print('epoch {}: Train Levenshtein {} | Validation Levenshtein {}'
+              .format(i, train_levenshtein / len_levenshtein, val_levenshtein / target_lengths), end='\n')
+        # ============================================ SAVE MODEL ======================================================
+        if (val_levenshtein / target_lengths) < best_leven:
+            torch.save(model.state_dict(), f=str((val_levenshtein / target_lengths) * 100).replace('.', '_') + '_' + 'model.pth')
+            best_leven = val_levenshtein / target_lengths
 
 
-batch_size = (120, 240)
+train_batch_size = 120
+validation_batch_size = 240
 dataset_size = len(dataset)
 indices = list(range(dataset_size))
 split = int(np.floor(0.2 * dataset_size))
@@ -127,11 +126,12 @@ train_indices, val_indices = indices[split:], indices[:split]
 train_sampler = SubsetRandomSampler(train_indices)
 valid_sampler = SubsetRandomSampler(val_indices)
 
-train_loader = DataLoader(dataset, batch_size=batch_size[0], sampler=train_sampler, collate_fn=collate_fn)
-validation_loader = DataLoader(dataset, batch_size=batch_size[1], sampler=valid_sampler, collate_fn=collate_fn)
-fit(model=model, epochs=12, train_data_loader=train_loader, valid_data_loader=validation_loader)
+train_loader = DataLoader(dataset, batch_size=train_batch_size, sampler=train_sampler, collate_fn=collate)
+validation_loader = DataLoader(dataset, batch_size=validation_batch_size, sampler=valid_sampler, collate_fn=collate)
+fit(model=model, epochs=10, train_data_loader=train_loader, valid_data_loader=validation_loader)
 
 
+# ============================================ TESTING =================================================================
 def batch_predict(model, valid_dl, up_to):
     xb, yb, lens = iter(valid_dl).next()
     model.eval()
@@ -142,6 +142,7 @@ def batch_predict(model, valid_dl, up_to):
             end = lens[i].item()
             corr = ''.join([decode_map.get(letter.item()) for letter in yb[start:start + end]])
             predicted = ''.join([decode_map.get(letter) for letter in outs[i]])
+            # ============================================ SHOW IMAGE ==================================================
             img = xb[i, :, :, :].permute(1, 2, 0).cpu().numpy()
             img = rgb2grey(img)
             img = rotate(img, angle=90, clip=False, resize=True)
