@@ -1,17 +1,33 @@
 import os
+import sys
 
+import cv2 as cv
 import numpy as np
 import pandas as pd
 import torch
+from colorama import Fore
 from skimage import io, transform, color
 from torch.utils.data import Dataset
 from torchvision.transforms import Normalize
+from tqdm import tqdm
+
+
+def deskew(img):
+    m = cv.moments(img)
+    if abs(m['mu02']) < 1e-2:
+        return img
+    skew = m['mu11'] / m['mu02']
+    M = np.float32([[1, skew, -0.5 * img.shape[0] * skew], [0, 1, 0]])
+    img = cv.warpAffine(img, M, (img.shape[1], img.shape[0]), flags=cv.WARP_INVERSE_MAP | cv.INTER_LINEAR,
+                        borderMode=cv.BORDER_CONSTANT, borderValue=(255, 255, 255))
+    return img
 
 
 class IAMData(Dataset):
 
-    def __init__(self, txt_file, root_dir, output_size, border_pad=(0, 0), random_rotation=0, random_stretch=1):
+    def __init__(self, txt_file, root_dir, output_size, border_pad=(0, 0), random_stretch=1):
         gt = []
+        print("Preparing dataset...")
         # Open raw lines.txt
         for line in open(txt_file):
             # Ignore comments
@@ -36,6 +52,9 @@ class IAMData(Dataset):
         self.char_dict = {c: i for i, c in enumerate(chars, 1)}
         # Convert raw data to dataset
         self.samples = {}
+        progress_bar = tqdm(total=len(self.line_df),
+                            position=0, leave=True,
+                            file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.RED, Fore.RESET))
         for idx in range(0, len(self.line_df)):
             # Take image filename from the first column
             img_name = self.line_df.iloc[idx, 0]
@@ -69,10 +88,7 @@ class IAMData(Dataset):
             new_size = (max(min(resize[0], int(h / f)), 1), max(min(resize[1], int(w / f * random_stretch)), 1))
             # Resize image and fill all empty area with white color
             image = transform.resize(image, new_size, preserve_range=True, mode='constant', cval=255)
-            # Generate random angle from -2 to 2
-            rot = np.random.choice(np.arange(-random_rotation, random_rotation), 1)
-            # Rotate image and fill all empty area with white color
-            image = transform.rotate(image, rot, mode='constant', cval=255, preserve_range=True)
+            image = deskew(image)
             # Prepare canvas for the resized image
             canvas = np.ones(output_size, dtype=np.uint8) * 255
             # Calculate maximum actual padding
@@ -86,13 +102,15 @@ class IAMData(Dataset):
             # Rotate image 90 degrees counter-clockwise
             canvas = transform.rotate(canvas, -90, resize=True)[:, :-1]
             # Convert to RGB from greyscale
-            canvas = color.grey2rgb(canvas)
+            canvas = color.gray2rgb(canvas)
             # Transpose tensor
             canvas = torch.from_numpy(canvas.transpose((2, 0, 1))).float()
             # Normalize image
             norm = Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
             sample = {'image': norm(canvas), 'word': word}
+            progress_bar.update(1)
             self.samples[idx] = sample
+        progress_bar.close()
 
     def __len__(self):
         return len(self.line_df)

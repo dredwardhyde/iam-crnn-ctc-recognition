@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from colorama import Fore
-from skimage.color import rgb2grey
+from skimage.color import rgb2gray
 from skimage.transform import rotate
 from torch import nn, optim
 from torch.utils.data import SubsetRandomSampler, DataLoader
@@ -22,7 +22,6 @@ dataset = IAMData(txt_file='./dataset/lines.txt',
                   root_dir='./dataset',
                   output_size=(64, 800),
                   border_pad=(4, 10),
-                  random_rotation=2,
                   random_stretch=1.2)
 
 
@@ -131,7 +130,8 @@ valid_sampler = SubsetRandomSampler(val_indices)
 
 train_loader = DataLoader(dataset, batch_size=train_batch_size, sampler=train_sampler, collate_fn=collate)
 validation_loader = DataLoader(dataset, batch_size=validation_batch_size, sampler=valid_sampler, collate_fn=collate)
-fit(model=model, epochs=10, train_data_loader=train_loader, valid_data_loader=validation_loader)
+print("Training...")
+fit(model=model, epochs=13, train_data_loader=train_loader, valid_data_loader=validation_loader)
 
 
 # ============================================ TESTING =================================================================
@@ -147,7 +147,7 @@ def batch_predict(model, valid_dl, up_to):
             predicted = ''.join([decode_map.get(letter) for letter in outs[i]])
             # ============================================ SHOW IMAGE ==================================================
             img = xb[i, :, :, :].permute(1, 2, 0).cpu().numpy()
-            img = rgb2grey(img)
+            img = rgb2gray(img)
             img = rotate(img, angle=90, clip=False, resize=True)
             f, ax = plt.subplots(1, 1)
             mpl.rcParams["font.size"] = 8
