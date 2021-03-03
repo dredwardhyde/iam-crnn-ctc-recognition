@@ -29,9 +29,12 @@ dataset = IAMData(txt_file='./dataset/lines.txt',
 def collate(batch):
     images, words = [b.get('image') for b in batch], [b.get('word') for b in batch]
     images = torch.stack(images, 0)
+    # Calculate target lengths for the current batch
     lengths = [len(word) for word in words]
+    # Tensor of size sum(target_lengths) the targets are assumed to be un-padded and concatenated within 1 dimension.
     targets = torch.zeros(sum(lengths)).long()
     lengths = torch.tensor(lengths)
+    # Now we need to fill targets according to calculated lengths
     for j, word in enumerate(words):
         start = sum(lengths[:j])
         end = lengths[j]
@@ -47,6 +50,7 @@ model = IAMModel(time_step=96,
                  num_rnn_layers=4)
 model.load_pretrained_resnet()
 model.to(dev)
+
 
 # ================================================ TRAINING MODEL ======================================================
 def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, betas=(0.9, 0.999)):
@@ -66,6 +70,8 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
                                  file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)):
             model.train()
             opt.zero_grad()
+            # And the lengths are specified for each sequence to achieve masking
+            # under the assumption that sequences are padded to equal lengths.
             input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
             loss = loss_func(model(xb), yb, input_lengths, lens)
             loss.backward()
@@ -76,6 +82,8 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
                 with torch.no_grad():
                     decoded = model.eager_decode(xb)
                     for j in range(0, len(decoded)):
+                        # We need to find actual string somewhere in the middle of the 'targets'
+                        # tensor having tensor 'lens' with known lengths
                         actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
                         train_levenshtein += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
                     len_levenshtein += sum(lens).item()
