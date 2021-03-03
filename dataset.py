@@ -25,7 +25,7 @@ def deskew(img):
 
 class IAMData(Dataset):
 
-    def __init__(self, txt_file, root_dir, output_size, border_pad=(0, 0), random_stretch=1):
+    def __init__(self, txt_file, root_dir, output_size, border_pad=(0, 0)):
         gt = []
         print("Preparing dataset...")
         # Open raw lines.txt
@@ -85,7 +85,7 @@ class IAMData(Dataset):
             f = max(fx, fy)
             # Calculate new size like either maximum target dimension or scaled one min(resize[0], int(h / f)
             # max(min(resize[0], int(h / f)), 1) etc. sets the lower bound
-            new_size = (max(min(resize[0], int(h / f)), 1), max(min(resize[1], int(w / f * random_stretch)), 1))
+            new_size = (max(min(resize[0], int(h / f)), 1), max(min(resize[1], int(w / f * np.random.uniform(1, 3))), 1))
             # Resize image and fill all empty area with white color
             image = transform.resize(image, new_size, preserve_range=True, mode='constant', cval=255)
             image = deskew(image)

@@ -21,8 +21,7 @@ dev = "cuda" if torch.cuda.is_available() else "cpu"
 dataset = IAMData(txt_file='./dataset/lines.txt',
                   root_dir='./dataset',
                   output_size=(64, 800),
-                  border_pad=(4, 10),
-                  random_stretch=1.2)
+                  border_pad=(4, 10))
 
 
 def collate(batch):
