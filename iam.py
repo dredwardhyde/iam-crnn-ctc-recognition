@@ -31,6 +31,7 @@ def collate(batch):
     images = torch.stack(images, 0)
     # Calculate target lengths for the current batch
     lengths = [len(word) for word in words]
+    # According to https://pytorch.org/docs/stable/generated/torch.nn.CTCLoss.html
     # Tensor of size sum(target_lengths) the targets are assumed to be un-padded and concatenated within 1 dimension.
     targets = torch.zeros(sum(lengths)).long()
     lengths = torch.tensor(lengths)
