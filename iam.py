@@ -23,6 +23,8 @@ dataset = IAMData(txt_file='./dataset/lines.txt',
                   output_size=(64, 800),
                   border_pad=(4, 10))
 
+classes = ''.join(dataset.char_dict.keys())
+
 
 def collate(batch):
     images, words = [b.get('image') for b in batch], [b.get('word') for b in batch]
@@ -31,7 +33,7 @@ def collate(batch):
     lengths = [len(word) for word in words]
     # According to https://pytorch.org/docs/stable/generated/torch.nn.CTCLoss.html
     # Tensor of size sum(target_lengths) the targets are assumed to be un-padded and concatenated within 1 dimension.
-    targets = torch.zeros(sum(lengths)).long()
+    targets = torch.empty(sum(lengths)).fill_(len(classes)).long()
     lengths = torch.tensor(lengths)
     # Now we need to fill targets according to calculated lengths
     for j, word in enumerate(words):
@@ -45,8 +47,9 @@ def collate(batch):
 model = IAMModel(time_step=96,
                  feature_size=512,
                  hidden_size=512,
-                 output_size=len(dataset.char_dict) + 1,
-                 num_rnn_layers=4)
+                 lm=dataset.all_lines,
+                 output_size=len(classes) + 1,
+                 num_rnn_layers=4, classes=classes)
 model.load_pretrained_resnet()
 model.to(dev)
 
@@ -57,7 +60,7 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
     opt = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr,
                      weight_decay=wd, betas=betas)
     len_train = len(train_data_loader)
-    loss_func = nn.CTCLoss(reduction='sum', zero_infinity=True)
+    loss_func = nn.CTCLoss(reduction='sum', zero_infinity=True, blank=len(classes))
     for i in range(1, epochs + 1):
         # ============================================ TRAINING ========================================================
         batch_n = 1
@@ -72,19 +75,19 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
             # And the lengths are specified for each sequence to achieve masking
             # under the assumption that sequences are padded to equal lengths.
             input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
-            loss = loss_func(model(xb), yb, input_lengths, lens)
+            loss = loss_func(model(xb).log_softmax(2).requires_grad_(), yb, input_lengths, lens)
             loss.backward()
             opt.step()
             # ================================== TRAINING LEVENSHTEIN DISTANCE =========================================
             if batch_n > (len_train - 5):
                 model.eval()
                 with torch.no_grad():
-                    decoded = model.eager_decode(xb)
+                    decoded = model.beam_search_with_lm(xb)
                     for j in range(0, len(decoded)):
                         # We need to find actual string somewhere in the middle of the 'targets'
                         # tensor having tensor 'lens' with known lengths
                         actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
-                        train_levenshtein += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
+                        train_levenshtein += leven.distance(''.join([letter for letter in decoded[j]]), ''.join([decode_map.get(letter.item()) for letter in actual[:]]))
                     len_levenshtein += sum(lens).item()
 
             batch_n += 1
@@ -100,10 +103,10 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
                                      file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET)):
                 input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
                 valid_loss += loss_func(model(xb), yb, input_lengths, lens)
-                decoded = model.eager_decode(xb)
+                decoded = model.beam_search_with_lm(xb)
                 for j in range(0, len(decoded)):
                     actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
-                    val_levenshtein += leven.distance(''.join(decoded[j].astype(str)), ''.join(actual.astype(str)))
+                    val_levenshtein += leven.distance(''.join([letter for letter in decoded[j]]), ''.join([decode_map.get(letter.item()) for letter in actual[:]]))
                 target_lengths += sum(lens).item()
 
         print('epoch {}: Train Levenshtein {} | Validation Levenshtein {}'
@@ -115,7 +118,7 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
 
 
 train_batch_size = 120
-validation_batch_size = 240
+validation_batch_size = 40
 dataset_size = len(dataset)
 indices = list(range(dataset_size))
 split = int(np.floor(0.2 * dataset_size))
@@ -130,7 +133,7 @@ valid_sampler = SubsetRandomSampler(val_indices)
 train_loader = DataLoader(dataset, batch_size=train_batch_size, sampler=train_sampler, collate_fn=collate)
 validation_loader = DataLoader(dataset, batch_size=validation_batch_size, sampler=valid_sampler, collate_fn=collate)
 print("Training...")
-fit(model=model, epochs=13, train_data_loader=train_loader, valid_data_loader=validation_loader)
+fit(model=model, epochs=10, train_data_loader=train_loader, valid_data_loader=validation_loader)
 
 
 # ============================================ TESTING =================================================================
@@ -138,12 +141,12 @@ def batch_predict(model, valid_dl, up_to):
     xb, yb, lens = iter(valid_dl).next()
     model.eval()
     with torch.no_grad():
-        outs = model.eager_decode(xb)
+        outs = model.beam_search_with_lm(xb)
         for i in range(len(outs)):
             start = sum(lens[:i])
             end = lens[i].item()
             corr = ''.join([decode_map.get(letter.item()) for letter in yb[start:start + end]])
-            predicted = ''.join([decode_map.get(letter) for letter in outs[i]])
+            predicted = ''.join([letter for letter in outs[i]])
             # ============================================ SHOW IMAGE ==================================================
             img = xb[i, :, :, :].permute(1, 2, 0).cpu().numpy()
             img = rgb2gray(img)

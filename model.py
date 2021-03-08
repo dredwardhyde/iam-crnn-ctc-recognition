@@ -1,10 +1,9 @@
-from itertools import groupby
-
-import numpy as np
 import torch
 from torch import nn
 from torch.utils.model_zoo import load_url
 from torchvision.models.resnet import BasicBlock
+
+from beam_search import LanguageModel, BeamSearch
 
 
 class CNN(nn.Module):
@@ -72,34 +71,31 @@ class RNN(nn.Module):
 
 class IAMModel(nn.Module):
 
-    def __init__(self, time_step, feature_size,
-                 hidden_size, output_size, num_rnn_layers):
+    def __init__(self, time_step, feature_size, lm,
+                 hidden_size, output_size, num_rnn_layers, classes):
         super(IAMModel, self).__init__()
         self.cnn = CNN(time_step=time_step)
         self.rnn = RNN(feature_size=feature_size, hidden_size=hidden_size,
                        output_size=output_size, num_layers=num_rnn_layers)
         self.time_step = time_step
+        self.classes = classes
+        self.lm = LanguageModel.LanguageModel(lm, self.classes)
 
     def forward(self, xb):
         xb = xb.float()
         out = self.cnn(xb)
         out = self.rnn(out)
-        return out.log_softmax(2)
+        return out
 
-    def eager_decode(self, xb):
+    def beam_search_with_lm(self, xb):
         with torch.no_grad():
-            # This tensor for each image in the batch contains probabilities of each label for each input feature
             out = self.forward(xb)
-            # Take label with maximum probability for each input feature
-            softmax_out = out.argmax(2).permute(1, 0).cpu().numpy()
+            # This tensor for each image in the batch contains probabilities of each label for each input feature
+            out = out.softmax(2)
+            softmax_out = out.permute(1, 0, 2).cpu().numpy()
             char_list = []
             for i in range(softmax_out.shape[0]):
-                # Raw prediction like [10, 5, 10, 10,  3, 10, 10,  8, 10, 10,  3, 10, 10, 10, 0, 0, 10]
-                # With blank label 0
-                raw_prediction = softmax_out[i, :]
-                # Remove all the blank values and group repeating values together
-                prediction = [c for c, _ in groupby(raw_prediction) if c != 0]
-                char_list.append(np.array(prediction, dtype=int))
+                char_list.append(BeamSearch.ctcBeamSearch(softmax_out[i, :], self.classes, self.lm))
         return char_list
 
     def load_pretrained_resnet(self):

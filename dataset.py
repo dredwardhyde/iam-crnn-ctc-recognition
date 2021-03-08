@@ -46,10 +46,11 @@ class IAMData(Dataset):
         chars = []
         # Take all values from the last column, convert to chars and add them to array
         self.line_df.iloc[:, -1].apply(lambda x: chars.extend(list(x)))
+        self.all_lines = ' '
         # Remove duplicates
         chars = sorted(list(set(chars)))
         # Convert to dictionary like {1:'c'}
-        self.char_dict = {c: i for i, c in enumerate(chars, 1)}
+        self.char_dict = {c: i for i, c in enumerate(chars)}
         # Convert raw data to dataset
         self.samples = {}
         progress_bar = tqdm(total=len(self.line_df),
@@ -74,6 +75,7 @@ class IAMData(Dataset):
             image = io.imread(img_filepath)
             # Read target sentence
             word = self.line_df.iloc[idx, -1]
+            self.all_lines = self.all_lines + ' ' + word
             # Calculate resulting size like target_size - borders
             resize = (output_size[0] - border_pad[0], output_size[1] - border_pad[1])
             # Get height and width of the image
