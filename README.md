@@ -1,4 +1,4 @@
-## IAM Dataset Writer Recognition Using CRNN, CTC loss, Beam Search and LM based on bigrams
+## IAM Dataset Writer Recognition Using CRNN, CTC Loss, DeepSpeech Beam Search and KenLM
 
 ### Training
 <img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/training.png" width="668"/>  
