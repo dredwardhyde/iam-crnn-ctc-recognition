@@ -62,6 +62,7 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
     best_leven = 1000
     opt = optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr,
                      weight_decay=wd, betas=betas)
+    opt.zero_grad(set_to_none=False)
     len_train = len(train_data_loader)
     loss_func = nn.CTCLoss(reduction='sum', zero_infinity=True, blank=len(classes))
     for i in range(1, epochs + 1):
@@ -74,13 +75,13 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
                                  position=0, leave=True,
                                  file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.GREEN, Fore.RESET)):
             model.train()
-            opt.zero_grad()
             # And the lengths are specified for each sequence to achieve masking
             # under the assumption that sequences are padded to equal lengths.
             input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
             loss = loss_func(model(xb).log_softmax(2).requires_grad_(), yb, input_lengths, lens)
             loss.backward()
             opt.step()
+            opt.zero_grad(set_to_none=False)
             # ================================== TRAINING LEVENSHTEIN DISTANCE =========================================
             if batch_n > (len_train - 5):
                 model.eval()
