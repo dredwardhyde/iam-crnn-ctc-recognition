@@ -24,6 +24,9 @@ dataset = IAMData(txt_file='./dataset/lines.txt',
                   border_pad=(4, 10))
 
 classes = ''.join(dataset.char_dict.keys())
+text_file = open("chars.txt", "w", encoding='utf-8')
+text_file.write('\n'.join([x if x != '#' else '\\#' for x in dataset.char_dict.keys()]))
+text_file.close()
 
 
 def collate(batch):
@@ -133,7 +136,7 @@ valid_sampler = SubsetRandomSampler(val_indices)
 train_loader = DataLoader(dataset, batch_size=train_batch_size, sampler=train_sampler, collate_fn=collate)
 validation_loader = DataLoader(dataset, batch_size=validation_batch_size, sampler=valid_sampler, collate_fn=collate)
 print("Training...")
-fit(model=model, epochs=10, train_data_loader=train_loader, valid_data_loader=validation_loader)
+fit(model=model, epochs=13, train_data_loader=train_loader, valid_data_loader=validation_loader)
 
 
 # ============================================ TESTING =================================================================

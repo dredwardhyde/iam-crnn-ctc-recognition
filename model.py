@@ -1,10 +1,10 @@
+import os
+
 import torch
+from ds_ctcdecoder import Alphabet, ctc_beam_search_decoder
 from torch import nn
 from torch.utils.model_zoo import load_url
 from torchvision.models.resnet import BasicBlock
-
-from beam_search import LanguageModel, BeamSearch
-import cProfile, pstats
 
 
 class CNN(nn.Module):
@@ -79,8 +79,6 @@ class IAMModel(nn.Module):
         self.rnn = RNN(feature_size=feature_size, hidden_size=hidden_size,
                        output_size=output_size, num_layers=num_rnn_layers)
         self.time_step = time_step
-        self.classes = classes
-        self.lm = LanguageModel.LanguageModel(lm, self.classes)
 
     def forward(self, xb):
         xb = xb.float()
@@ -95,13 +93,9 @@ class IAMModel(nn.Module):
             out = out.softmax(2)
             softmax_out = out.permute(1, 0, 2).cpu().numpy()
             char_list = []
-            profiler = cProfile.Profile()
-            profiler.enable()
             for i in range(softmax_out.shape[0]):
-                char_list.append(BeamSearch.ctcBeamSearch(softmax_out[i, :], self.classes, self.lm))
-            profiler.disable()
-            stats = pstats.Stats(profiler).sort_stats('ncalls')
-            stats.print_stats()
+                char_list.append(ctc_beam_search_decoder(probs_seq=softmax_out[i, :],
+                                                         alphabet=Alphabet(os.path.abspath("chars.txt")), beam_size=25)[0][1])
         return char_list
 
     def load_pretrained_resnet(self):
