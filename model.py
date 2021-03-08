@@ -4,6 +4,7 @@ from torch.utils.model_zoo import load_url
 from torchvision.models.resnet import BasicBlock
 
 from beam_search import LanguageModel, BeamSearch
+import cProfile, pstats
 
 
 class CNN(nn.Module):
@@ -94,8 +95,13 @@ class IAMModel(nn.Module):
             out = out.softmax(2)
             softmax_out = out.permute(1, 0, 2).cpu().numpy()
             char_list = []
+            profiler = cProfile.Profile()
+            profiler.enable()
             for i in range(softmax_out.shape[0]):
                 char_list.append(BeamSearch.ctcBeamSearch(softmax_out[i, :], self.classes, self.lm))
+            profiler.disable()
+            stats = pstats.Stats(profiler).sort_stats('ncalls')
+            stats.print_stats()
         return char_list
 
     def load_pretrained_resnet(self):
