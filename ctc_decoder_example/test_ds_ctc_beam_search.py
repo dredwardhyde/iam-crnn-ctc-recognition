@@ -1,7 +1,7 @@
 import os
 
 import numpy as np
-from ds_ctcdecoder import Alphabet, ctc_beam_search_decoder
+from ds_ctcdecoder import Alphabet, ctc_beam_search_decoder, Scorer
 
 classes = ' !"#&\'()*+,-./0123456789:;?ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
 text_file = open("chars_small.txt", "w", encoding='utf-8')
@@ -24,7 +24,7 @@ def load_rnn_output(fn):
 
 alphabet = Alphabet(os.path.abspath("chars_small.txt"))
 crnn_output = softmax(load_rnn_output('./rnn_output.csv'))
-res = ctc_beam_search_decoder(probs_seq=crnn_output, alphabet=alphabet, beam_size=25)
-# predicted: the fak friend of the fomcly hae tC
+res = ctc_beam_search_decoder(probs_seq=crnn_output, alphabet=alphabet, beam_size=25, scorer=Scorer(alphabet=alphabet, scorer_path='iam.scorer', alpha=0.75, beta=1.85))
+# predicted: the fake friend of the family has to
 # actual: the fake friend of the family, like the
 print(res[0][1])

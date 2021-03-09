@@ -1,7 +1,7 @@
 import os
 
 import torch
-from ds_ctcdecoder import Alphabet, ctc_beam_search_decoder
+from ds_ctcdecoder import Alphabet, ctc_beam_search_decoder, Scorer
 from torch import nn
 from torch.utils.model_zoo import load_url
 import torchvision.models as models
@@ -45,6 +45,8 @@ class IAMModel(nn.Module):
         self.cnn = CNN(time_step=time_step)
         self.rnn = RNN(feature_size=feature_size, hidden_size=hidden_size, output_size=output_size, num_layers=num_rnn_layers)
         self.time_step = time_step
+        self.alphabet = Alphabet(os.path.abspath("chars.txt"))
+        self.scorer = Scorer(alphabet=self.alphabet, scorer_path='iam_uncased.scorer', alpha=0.75, beta=1.85)
 
     def forward(self, xb):
         xb = xb.float()
@@ -60,6 +62,5 @@ class IAMModel(nn.Module):
             softmax_out = out.permute(1, 0, 2).cpu().numpy()
             char_list = []
             for i in range(softmax_out.shape[0]):
-                char_list.append(ctc_beam_search_decoder(probs_seq=softmax_out[i, :],
-                                                         alphabet=Alphabet(os.path.abspath("chars.txt")), beam_size=25)[0][1])
+                char_list.append(ctc_beam_search_decoder(probs_seq=softmax_out[i, :], alphabet=self.alphabet, beam_size=25, scorer=self.scorer)[0][1])
         return char_list

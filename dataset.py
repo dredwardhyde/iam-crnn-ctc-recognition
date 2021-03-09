@@ -37,7 +37,7 @@ class IAMData(Dataset):
                 # If string was recognized correctly
                 if info[1] == 'ok':
                     # First column is filename, second column is target sentence
-                    gt.append((info[0] + '.png', ' '.join(info[8:]).replace('|', ' ')))
+                    gt.append((info[0] + '.png', ' '.join(info[8:]).replace('|', ' ').lower()))
 
         # Convert target array to Dataframe
         df = pd.DataFrame(gt, columns=['file', 'word'])
