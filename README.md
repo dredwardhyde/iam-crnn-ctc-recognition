@@ -1,7 +1,7 @@
 ## IAM Dataset Writer Recognition Using CRNN, CTC Loss, DeepSpeech Beam Search and KenLM
 
 ### Training
-<img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/training.png" width="668"/>  
+<img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/training.png" width="662"/>  
 
 ### Results
 <img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/Figure_1.png" width="1000"/>  
