@@ -50,10 +50,8 @@ def collate(batch):
 model = IAMModel(time_step=96,
                  feature_size=512,
                  hidden_size=512,
-                 lm=dataset.all_lines,
                  output_size=len(classes) + 1,
-                 num_rnn_layers=4, classes=classes)
-model.load_pretrained_resnet()
+                 num_rnn_layers=4)
 model.to(dev)
 
 
@@ -137,7 +135,7 @@ valid_sampler = SubsetRandomSampler(val_indices)
 train_loader = DataLoader(dataset, batch_size=train_batch_size, sampler=train_sampler, collate_fn=collate)
 validation_loader = DataLoader(dataset, batch_size=validation_batch_size, sampler=valid_sampler, collate_fn=collate)
 print("Training...")
-fit(model=model, epochs=13, train_data_loader=train_loader, valid_data_loader=validation_loader)
+fit(model=model, epochs=18, train_data_loader=train_loader, valid_data_loader=validation_loader)
 
 
 # ============================================ TESTING =================================================================
