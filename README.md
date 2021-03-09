@@ -6,7 +6,7 @@
 - Place **lines.txt** in **dataset** folder
 
 ### Training
-<img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/training.png" width="662"/>  
+<img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/training.png" width="664"/>  
 
 ### Results
 <img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/Figure_1.png" width="1000"/>  

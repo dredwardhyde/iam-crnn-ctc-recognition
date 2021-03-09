@@ -135,7 +135,7 @@ valid_sampler = SubsetRandomSampler(val_indices)
 train_loader = DataLoader(dataset, batch_size=train_batch_size, sampler=train_sampler, collate_fn=collate)
 validation_loader = DataLoader(dataset, batch_size=validation_batch_size, sampler=valid_sampler, collate_fn=collate)
 print("Training...")
-fit(model=model, epochs=18, train_data_loader=train_loader, valid_data_loader=validation_loader)
+fit(model=model, epochs=22, train_data_loader=train_loader, valid_data_loader=validation_loader)
 
 
 # ============================================ TESTING =================================================================
