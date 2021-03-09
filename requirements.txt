@@ -6,6 +6,7 @@ matplotlib==3.3.4
 levenshtein==0.12.0
 ds_ctcdecoder==0.9.3
 opencv-python==4.5.1.48
---find-links https://download.pytorch.org/whl/torch_stable.html
-torch==1.7.1+cu110
-torchvision==0.8.2+cu110
+pandas==1.2.2
+-f https://download.pytorch.org/whl/torch_stable.html
+torch==1.8.0+cu111
+torchvision==0.9.0+cu111
