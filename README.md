@@ -1,4 +1,4 @@
-## IAM Dataset Writer Recognition Using CRNN, CTC Loss, DeepSpeech Beam Search and KenLM Scorer
+## IAM Dataset Handwriting Recognition Using CRNN, CTC Loss, DeepSpeech Beam Search and KenLM Scorer
 
 ### Dataset
 - Download IAM database **[data/lines.tgz](https://fki.tic.heia-fr.ch/DBs/iamDB/data/lines.tgz)** and **[data/sentences.tgz](https://fki.tic.heia-fr.ch/DBs/iamDB/data/sentences.tgz)**
