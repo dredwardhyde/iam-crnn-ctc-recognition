@@ -1,9 +1,9 @@
 ## IAM Dataset Handwriting Recognition Using CRNN, CTC Loss, DeepSpeech Beam Search and KenLM Scorer
 
 ### Dataset
-- Download IAM database **[data/lines.tgz](https://fki.tic.heia-fr.ch/DBs/iamDB/data/lines.tgz)** and **[data/sentences.tgz](https://fki.tic.heia-fr.ch/DBs/iamDB/data/sentences.tgz)**
-- Unpack **sentences.tgz** in **dataset** folder at the root directory for this project
-- Place **lines.txt** in **dataset** folder
+- Download IAM database **[data/lines.tgz](https://fki.tic.heia-fr.ch/DBs/iamDB/data/lines.tgz)** and **[data/ascii.tgz](https://fki.tic.heia-fr.ch/DBs/iamDB/data/ascii.tgz)**
+- Unpack **lines.tgz** in **dataset** folder at the root directory for this project
+- Place **lines.txt** from **ascii.tgz** in **dataset** folder
 
 ### Training
 <img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/training.png" width="678"/>  

@@ -119,7 +119,7 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
             best_leven = val_levenshtein / target_lengths
 
 
-train_batch_size = 120
+train_batch_size = 60
 validation_batch_size = 40
 dataset_size = len(dataset)
 indices = list(range(dataset_size))
