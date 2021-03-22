@@ -66,7 +66,6 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
     for i in range(1, epochs + 1):
         # ============================================ TRAINING ========================================================
         batch_n = 1
-        loss = 0
         train_levenshtein = 0
         len_levenshtein = 0
         for xb, yb, lens in tqdm(train_data_loader,
@@ -76,8 +75,7 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
             # And the lengths are specified for each sequence to achieve masking
             # under the assumption that sequences are padded to equal lengths.
             input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
-            loss = loss_func(model(xb).log_softmax(2).requires_grad_(), yb, input_lengths, lens)
-            loss.backward()
+            loss_func(model(xb).log_softmax(2).requires_grad_(), yb, input_lengths, lens).backward()
             opt.step()
             opt.zero_grad(set_to_none=False)
             # ================================== TRAINING LEVENSHTEIN DISTANCE =========================================
@@ -97,14 +95,11 @@ def fit(model, epochs, train_data_loader, valid_data_loader, lr=1e-3, wd=1e-2, b
         # ============================================ VALIDATION ======================================================
         model.eval()
         with torch.no_grad():
-            valid_loss = 0
             val_levenshtein = 0
             target_lengths = 0
             for xb, yb, lens in tqdm(valid_data_loader,
                                      position=0, leave=True,
                                      file=sys.stdout, bar_format="{l_bar}%s{bar}%s{r_bar}" % (Fore.BLUE, Fore.RESET)):
-                input_lengths = torch.full((xb.size()[0],), model.time_step, dtype=torch.long)
-                valid_loss += loss_func(model(xb), yb, input_lengths, lens)
                 decoded = model.beam_search_with_lm(xb)
                 for j in range(0, len(decoded)):
                     actual = yb.cpu().numpy()[0 + sum(lens[:j]): sum(lens[:j]) + lens[j]]
