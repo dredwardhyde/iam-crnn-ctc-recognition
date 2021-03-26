@@ -1,5 +1,6 @@
 ## IAM Dataset Handwriting Recognition Using CRNN, CTC Loss, DeepSpeech Beam Search and KenLM Scorer
-
+![Python3.8.6](https://img.shields.io/badge/Python-3.8.6-blue.svg)
+![PyTorch1.7](https://img.shields.io/badge/PyTorch-1.8.1-yellow.svg)
 ### Dataset
 - Download IAM database **[data/lines.tgz](https://fki.tic.heia-fr.ch/DBs/iamDB/data/lines.tgz)** and **[data/ascii.tgz](https://fki.tic.heia-fr.ch/DBs/iamDB/data/ascii.tgz)**
 - Unpack **lines.tgz** in **dataset** folder at the root directory for this project
