@@ -6,6 +6,9 @@
 - Unpack **lines.tgz** in **dataset** folder at the root directory for this project
 - Place **lines.txt** from **ascii.tgz** in **dataset** folder
 
+[**Model**](https://github.com/dredwardhyde/iam-crnn-ctc-recognition/blob/master/iam.py)  
+[**Model with DeepSpeed**](https://github.com/dredwardhyde/iam-crnn-ctc-recognition/blob/master/iam_deepspeed.py)  
+
 ### Training
 <img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/training.png" width="678"/>  
 
