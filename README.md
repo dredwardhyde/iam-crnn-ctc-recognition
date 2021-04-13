@@ -8,7 +8,7 @@
 
 [**Model**](https://github.com/dredwardhyde/iam-crnn-ctc-recognition/blob/master/iam.py)  
 [**Model with DeepSpeed**](https://github.com/dredwardhyde/iam-crnn-ctc-recognition/blob/master/iam_deepspeed.py)  
-
+[**Model with DeepSpeed training log**](https://github.com/dredwardhyde/iam-crnn-ctc-recognition/blob/master/training_and_validation.log)  
 ### Training
 <img src="https://raw.githubusercontent.com/dredwardhyde/iam-crnn-ctc-recognition/master/results/training.png" width="678"/>  
 
