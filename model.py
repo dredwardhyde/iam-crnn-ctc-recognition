@@ -49,7 +49,6 @@ class IAMModel(nn.Module):
         self.scorer = Scorer(alphabet=self.alphabet, scorer_path='iam_uncased.scorer', alpha=0.75, beta=1.85)
 
     def forward(self, xb):
-        xb = xb.float()
         out = self.cnn(xb)
         out = self.rnn(out)
         return out
